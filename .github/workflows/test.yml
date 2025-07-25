@@ -1,0 +1,138 @@
+name: Test Sleep Blocker MCP Server
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Make server executable
+      run: chmod +x mcp_server.py
+
+    - name: Test server initialization
+      run: |
+        echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}' | python3 mcp_server.py > output.json
+        if ! grep -q "sleep-blocker" output.json; then
+          echo "Server initialization failed"
+          cat output.json
+          exit 1
+        fi
+
+    - name: Test tools listing
+      run: |
+        echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}' | python3 mcp_server.py > tools.json
+        if ! grep -q "start_sleep_prevention" tools.json; then
+          echo "Tools listing failed"
+          cat tools.json
+          exit 1
+        fi
+
+    - name: Test sleep status tool
+      run: |
+        echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "get_sleep_status", "arguments": {}}}' | python3 mcp_server.py > status.json
+        if ! grep -q "active" status.json; then
+          echo "Sleep status tool failed"
+          cat status.json
+          exit 1
+        fi
+
+    - name: Test sleep modes listing
+      run: |
+        echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "list_sleep_modes", "arguments": {}}}' | python3 mcp_server.py > modes.json
+        if ! grep -q "display" modes.json; then
+          echo "Sleep modes listing failed"
+          cat modes.json
+          exit 1
+        fi
+
+    - name: Test duration preset
+      run: |
+        echo '{"jsonrpc": "2.0", "id": 5, "method": "tools/call", "params": {"name": "set_duration_preset", "arguments": {"preset": "1hr"}}}' | python3 mcp_server.py > preset.json
+        if ! grep -q "success" preset.json; then
+          echo "Duration preset failed"
+          cat preset.json
+          exit 1
+        fi
+
+    - name: Test caffeinate availability
+      run: |
+        if ! which caffeinate > /dev/null; then
+          echo "caffeinate command not found - this should not happen on macOS"
+          exit 1
+        fi
+
+    - name: Test installation script
+      run: |
+        chmod +x install.sh
+        # Test dry run of installation script
+        if ! bash -n install.sh; then
+          echo "Installation script has syntax errors"
+          exit 1
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black
+    
+    - name: Lint with flake8
+      run: |
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 mcp_server.py --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 mcp_server.py --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+
+    - name: Check code formatting with black
+      run: |
+        black --check --diff mcp_server.py
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install bandit
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit
+    
+    - name: Run security scan
+      run: |
+        bandit -r mcp_server.py -f json -o bandit-report.json || true
+    
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: bandit-report
+        path: bandit-report.json

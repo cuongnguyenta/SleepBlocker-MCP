@@ -1,0 +1,19 @@
+{
+  "name": "sleep-blocker-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for Sleep Blocker - Control macOS sleep prevention via caffeinate",
+  "main": "mcp_server.py",
+  "scripts": {
+    "start": "python3 mcp_server.py"
+  },
+  "keywords": ["mcp", "sleep", "caffeinate", "macos", "system"],
+  "author": "Sleep Blocker",
+  "license": "MIT",
+  "mcp": {
+    "server": {
+      "command": "python3",
+      "args": ["mcp_server.py"],
+      "env": {}
+    }
+  }
+}
