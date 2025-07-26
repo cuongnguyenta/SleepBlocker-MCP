@@ -368,7 +368,7 @@ async def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             return {
                 "jsonrpc": "2.0",
-                "id": msg_id,
+                "id": msg_id if msg_id is not None else 0,
                 "error": {
                     "code": -32603,
                     "message": f"Internal error: {str(e)}"
@@ -378,7 +378,7 @@ async def handle_mcp_message(message: Dict[str, Any]) -> Dict[str, Any]:
     else:
         return {
             "jsonrpc": "2.0",
-            "id": msg_id,
+            "id": msg_id if msg_id is not None else 0,
             "error": {
                 "code": -32601,
                 "message": f"Method not found: {method}"
@@ -404,7 +404,7 @@ async def main():
             except json.JSONDecodeError as e:
                 error_response = {
                     "jsonrpc": "2.0",
-                    "id": None,
+                    "id": 0,
                     "error": {
                         "code": -32700,
                         "message": f"Parse error: {str(e)}"
