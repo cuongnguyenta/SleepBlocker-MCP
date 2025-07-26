@@ -144,7 +144,7 @@ After installation, test with your AI assistant:
 
 - **Claude Code** ✅
 - **Cursor** ✅
-- **Continue** ✅
+- **Claude Desktop** ✅
 - **Windsurf** ✅
 - **Any MCP-compatible client** ✅
 
